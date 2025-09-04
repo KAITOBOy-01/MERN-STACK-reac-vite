@@ -1,4 +1,5 @@
 const Post = require('../models/Post')
+const fs = require('fs')
 
 const getPost = async (req,res) => {
     try {
@@ -10,8 +11,9 @@ const getPost = async (req,res) => {
 }
 
 const createPost = async (req,res) => {
-    const post = req.body
-    const newPost = new Post(post)
+    const { title, content } = req.body
+    const image = req.file ? req.file.filename : null
+    const newPost = new Post({ title, content , image })
     try{
         await newPost.save()
         res.status(201).json(newPost)
@@ -23,9 +25,13 @@ const createPost = async (req,res) => {
         const { id } = req.params
         const { title, content } = req.body
         try {
+            const posToUpdate = await Post.findById(id)
+
+            const image = req.file ? req.file.filename : posToUpdate.image
+
             const updatedPost = await Post.findByIdAndUpdate(
                 id,
-                { title, content },
+                { title, content , image },
                 { new: true }
             )
             res.status(200).json(updatedPost)
@@ -37,6 +43,18 @@ const createPost = async (req,res) => {
     const deletePost = async (req,res) => {
         const { id } = req.params
         try{
+            const postToDelete = await Post.findById(id)
+
+            if(postToDelete) {
+                const imagePath = `public/images/${postToDelete.image}`
+
+                fs.unlink(imagePath, (err) => {
+                    if(err) {
+                        console.error("Failed to Delete image from file:")
+                    }
+                })
+            }
+
             await Post.findByIdAndDelete(id)
             res.status(200).json({ message: 'Post deleted successfully' })
         }catch(error){
